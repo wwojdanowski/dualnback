@@ -22,15 +22,15 @@ func (g *Game) nLastLetter() int {
 }
 
 func (g *Game) isReady() bool {
-	return g.n < len(g.boxQueue)
+	return g.n == len(g.boxQueue)
 }
 
 func NewGame(n int, maxRounds int) *Game {
 	g := Game{}
 	g.n = n
 	g.maxRounds = maxRounds
-	g.boxQueue = make([]int, n)
-	g.letterQueue = make([]int, n)
+	g.boxQueue = make([]int, 0, n)
+	g.letterQueue = make([]int, 0, n)
 	return &g
 }
 
@@ -42,8 +42,29 @@ func makeLetter() int {
 	return rand.Intn(5)
 }
 
-func nextSequence() {
+func (g *Game) nextSequence() Item {
+	b := makeBox()
+	l := makeLetter()
 
+	if g.isReady() {
+		for i := g.n - 1; i > 0; i-- {
+			g.boxQueue[i] = g.boxQueue[i-1]
+			g.letterQueue[i] = g.letterQueue[i-1]
+		}
+	} else {
+		g.boxQueue = g.boxQueue[:len(g.boxQueue)+1]
+		g.letterQueue = g.letterQueue[:len(g.letterQueue)+1]
+
+		for i := len(g.boxQueue) - 1; i > 0; i-- {
+			g.boxQueue[i] = g.boxQueue[i-1]
+			g.letterQueue[i] = g.letterQueue[i-1]
+		}
+	}
+
+	g.boxQueue[0] = b
+	g.letterQueue[0] = l
+
+	return Item{b, l}
 }
 
 type Item struct {
@@ -58,7 +79,7 @@ func (g *Game) scoreRound(hit bool) {
 	g.round += 1
 }
 
-func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, feed <-chan Item) {
+func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, feed chan<- Item) {
 	boxPicked := false
 	letterPicked := false
 	presentedBox := -1
@@ -73,6 +94,9 @@ func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLette
 					g.scoreRound(true)
 				}
 			}
+			item := g.nextSequence()
+			feed <- item
+
 		case <-toggleBox:
 			boxPicked = !boxPicked
 		case <-toggleLetter:
