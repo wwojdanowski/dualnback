@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 )
 
@@ -34,6 +35,14 @@ func NewGame(n int, maxRounds int) *Game {
 	return &g
 }
 
+func makeItem(box, letter int) Item {
+	return Item{box: box, letter: letter}
+}
+
+func makeRandomItem() Item {
+	return Item{box: makeBox(), letter: makeLetter()}
+}
+
 func makeBox() int {
 	return rand.Intn(9)
 }
@@ -42,9 +51,9 @@ func makeLetter() int {
 	return rand.Intn(5)
 }
 
-func (g *Game) nextSequence() Item {
-	b := makeBox()
-	l := makeLetter()
+func (g *Game) nextSequence(item Item) Item {
+	b := item.box
+	l := item.letter
 
 	if g.isReady() {
 		for i := g.n - 1; i > 0; i-- {
@@ -61,10 +70,10 @@ func (g *Game) nextSequence() Item {
 		}
 	}
 
+	ret := Item{g.boxQueue[0], g.letterQueue[0]}
 	g.boxQueue[0] = b
 	g.letterQueue[0] = l
-
-	return Item{b, l}
+	return ret
 }
 
 type Item struct {
@@ -79,23 +88,26 @@ func (g *Game) scoreRound(hit bool) {
 	g.round += 1
 }
 
-func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, feed chan<- Item) {
+func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, feed <-chan Item) {
 	boxPicked := false
 	letterPicked := false
-	presentedBox := -1
-	presentedLetter := -1
+	lastItem := Item{}
 	for {
 		select {
 		case <-pulse:
 			if g.isReady() {
-				if isCorrect(g, presentedBox, presentedLetter, boxPicked, letterPicked) {
+				if isCorrect(g, lastItem.box, lastItem.letter, boxPicked, letterPicked) {
 					g.scoreRound(false)
 				} else {
 					g.scoreRound(true)
 				}
+				item := <-feed
+				lastItem = g.nextSequence(item)
+			} else {
+				item := <-feed
+				g.nextSequence(item)
 			}
-			item := g.nextSequence()
-			feed <- item
+			// feed <- item
 
 		case <-toggleBox:
 			boxPicked = !boxPicked
@@ -130,6 +142,9 @@ func isCorrect(g *Game, presentedBox, presentedLetter int, boxPicked, letterPick
 			}
 		}
 	}
+
+	fmt.Println(presentedBox, presentedLetter, boxPicked, letterPicked, match)
+
 	return match
 }
 
