@@ -6,12 +6,14 @@ import (
 )
 
 type Game struct {
-	n           int
-	boxQueue    []int
-	letterQueue []int
-	round       int
-	maxRounds   int
-	score       int
+	n              int
+	boxQueue       []int
+	letterQueue    []int
+	round          int
+	maxRounds      int
+	score          int
+	boxSelected    bool
+	letterSelected bool
 }
 
 func (g *Game) nLastBox() int {
@@ -22,16 +24,24 @@ func (g *Game) nLastLetter() int {
 	return g.letterQueue[len(g.letterQueue)-1]
 }
 
+func (g *Game) firstBox() int {
+	return g.boxQueue[0]
+}
+
+func (g *Game) firstLetter() int {
+	return g.letterQueue[0]
+}
+
 func (g *Game) isReady() bool {
-	return g.n == len(g.boxQueue)
+	return g.n+1 == len(g.boxQueue)
 }
 
 func NewGame(n int, maxRounds int) *Game {
 	g := Game{}
 	g.n = n
 	g.maxRounds = maxRounds
-	g.boxQueue = make([]int, 0, n)
-	g.letterQueue = make([]int, 0, n)
+	g.boxQueue = make([]int, 0, n+1)
+	g.letterQueue = make([]int, 0, n+1)
 	return &g
 }
 
@@ -51,12 +61,37 @@ func makeLetter() int {
 	return rand.Intn(5)
 }
 
+func (g *Game) toggleBox() {
+	g.boxSelected = !g.boxSelected
+}
+
+func (g *Game) toggleLetter() {
+	g.letterSelected = !g.letterSelected
+}
+
+func (g *Game) evalRound() {
+	score := true
+
+	if g.boxSelected && g.nLastBox() != g.firstBox() {
+		score = false
+	}
+	if score {
+		if g.letterSelected && g.nLastLetter() != g.firstLetter() {
+			score = false
+		}
+	}
+
+	if score {
+		g.score += 1
+	}
+}
+
 func (g *Game) nextSequence(item Item) Item {
 	b := item.box
 	l := item.letter
 
 	if g.isReady() {
-		for i := g.n - 1; i > 0; i-- {
+		for i := g.n; i > 0; i-- {
 			g.boxQueue[i] = g.boxQueue[i-1]
 			g.letterQueue[i] = g.letterQueue[i-1]
 		}
