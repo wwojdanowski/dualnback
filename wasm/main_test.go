@@ -79,10 +79,17 @@ func TestSelect(t *testing.T) {
 func TestToggleCorrect(t *testing.T) {
 	g := NewGame(3, 10)
 
-	items := make([]Item, 10)
-
-	for i := 0; i < len(items); i++ {
-		items[i] = makeRandomItem()
+	items := []Item{
+		Item{0, 0},
+		Item{1, 1},
+		Item{2, 2},
+		Item{3, 3},
+		Item{4, 4},
+		Item{5, 5},
+		Item{6, 3},
+		Item{4, 0},
+		Item{8, 1},
+		Item{8, 1},
 	}
 
 	g.nextSequence(items[0])
@@ -103,4 +110,48 @@ func TestToggleCorrect(t *testing.T) {
 	g.evalRound()
 
 	assert.Equal(t, 2, g.score)
+
+	g.nextSequence(items[2])
+	g.evalRound()
+
+	assert.Equal(t, 2, g.score)
+	g.nextSequence(items[3])
+	g.evalRound()
+
+	assert.Equal(t, 3, g.score)
+
+	g.nextSequence(items[4])
+	g.toggleBox()
+	g.evalRound()
+
+	assert.Equal(t, 3, g.score)
+
+	g.nextSequence(items[5])
+	g.toggleLetter()
+	g.evalRound()
+
+	assert.Equal(t, 3, g.score)
+
+	g.nextSequence(items[6])
+	g.toggleLetter()
+	g.evalRound()
+
+	assert.Equal(t, 4, g.score)
+
+	g.nextSequence(items[7])
+	g.toggleBox()
+	g.evalRound()
+
+	assert.Equal(t, 5, g.score)
+
+	g.nextSequence(items[8])
+	g.evalRound()
+	assert.Equal(t, 6, g.score)
+
+	assert.False(t, g.isDone())
+	g.nextSequence(items[9])
+	g.evalRound()
+	assert.Equal(t, 7, g.score)
+
+	assert.True(t, g.isDone())
 }

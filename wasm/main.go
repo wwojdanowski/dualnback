@@ -36,6 +36,10 @@ func (g *Game) isReady() bool {
 	return g.n+1 == len(g.boxQueue)
 }
 
+func (g *Game) isCompleted() bool {
+	return g.maxRounds == g.round
+}
+
 func NewGame(n int, maxRounds int) *Game {
 	g := Game{}
 	g.n = n
@@ -70,20 +74,37 @@ func (g *Game) toggleLetter() {
 }
 
 func (g *Game) evalRound() {
-	score := true
+	score := false
 
-	if g.boxSelected && g.nLastBox() != g.firstBox() {
-		score = false
+	if g.nLastBox() == g.firstBox() {
+		score = g.boxSelected
+	} else {
+		score = !g.boxSelected
 	}
+
 	if score {
-		if g.letterSelected && g.nLastLetter() != g.firstLetter() {
-			score = false
+		if g.nLastLetter() == g.firstLetter() {
+			score = g.letterSelected
+		} else {
+			score = !g.letterSelected
 		}
 	}
 
 	if score {
 		g.score += 1
 	}
+
+	g.resetToggles()
+	g.round += 1
+}
+
+func (g *Game) isDone() bool {
+	return g.round == g.maxRounds
+}
+
+func (g *Game) resetToggles() {
+	g.boxSelected = false
+	g.letterSelected = false
 }
 
 func (g *Game) nextSequence(item Item) Item {
