@@ -74,6 +74,7 @@ func (g *Game) toggleLetter() {
 }
 
 func (g *Game) evalRound() {
+	g.round += 1
 	score := false
 
 	if g.nLastBox() == g.firstBox() {
@@ -95,7 +96,6 @@ func (g *Game) evalRound() {
 	}
 
 	g.resetToggles()
-	g.round += 1
 }
 
 func (g *Game) isDone() bool {

@@ -173,23 +173,37 @@ func TestLoop(t *testing.T) {
 		Item{0, 0},
 		Item{1, 1},
 		Item{2, 2},
+		Item{3, 3},
 	}
 
 	ticker := time.NewTicker(50 * time.Millisecond)
-
 	index := 0
-
-	done := make(chan bool)
 	go func() {
+		eval := false
 		for {
-			select {
-			case <-done:
+			if index == len(items) {
 				return
+			}
+			select {
 			case <-ticker.C:
-				g.nextSequence(items[index])
-				index++
-				g.evalRound()
+				if eval {
+					if g.isReady() {
+						g.evalRound()
+					}
+					eval = false
+				} else {
+					g.nextSequence(items[index])
+					index++
+					eval = true
+				}
 			}
 		}
 	}()
+
+	time.Sleep(1500 * time.Millisecond)
+	ticker.Stop()
+	assert.Equal(t, g.round, 10)
+	assert.Equal(t, g.score, 6)
+	assert.True(t, g.isDone())
+
 }
