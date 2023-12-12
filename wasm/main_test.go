@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -154,4 +155,41 @@ func TestToggleCorrect(t *testing.T) {
 	assert.Equal(t, 7, g.score)
 
 	assert.True(t, g.isDone())
+}
+
+func TestLoop(t *testing.T) {
+	g := NewGame(3, 10)
+	items := []Item{
+		Item{0, 0},
+		Item{1, 1},
+		Item{2, 2},
+		Item{3, 3},
+		Item{4, 4},
+		Item{5, 5},
+		Item{6, 3},
+		Item{4, 0},
+		Item{8, 1},
+		Item{8, 1},
+		Item{0, 0},
+		Item{1, 1},
+		Item{2, 2},
+	}
+
+	ticker := time.NewTicker(50 * time.Millisecond)
+
+	index := 0
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				g.nextSequence(items[index])
+				index++
+				g.evalRound()
+			}
+		}
+	}()
 }
