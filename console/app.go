@@ -135,13 +135,15 @@ func main() {
 	s.EnablePaste()
 	s.Clear()
 
+	g := game.NewGame(2, 50)
+
 	drawBox(s, 0, 0, 60, 12, defStyle, "")
 	drawGrid(s, 1, 1, 3, 3, boxStyle)
+	printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
 
 	drawText(s, 10, 10, 50, 15, notReadyToBePressedStyle, "PLACE")
 	drawText(s, 18, 10, 50, 15, notReadyToBePressedStyle, "LETTER")
 
-	g := game.NewGame(2, 50)
 	ticker := time.NewTicker(3000 * time.Millisecond)
 
 	go func() {
@@ -149,7 +151,7 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+				// printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
 				if eval {
 					if g.IsReady() {
 						g.EvalRound()
