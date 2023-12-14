@@ -1,4 +1,4 @@
-package main
+package wasm
 
 import (
 	"testing"
@@ -10,12 +10,12 @@ import (
 func TestGame(t *testing.T) {
 	g := NewGame(3, 10)
 
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
 
-	assert.True(t, g.isReady(), "N-back is not ready!")
+	assert.True(t, g.IsReady(), "N-back is not ready!")
 	assert.Len(t, g.boxQueue, 4)
 	assert.Len(t, g.letterQueue, 4)
 }
@@ -23,11 +23,11 @@ func TestGame(t *testing.T) {
 func TestGameNotReady(t *testing.T) {
 	g := NewGame(3, 10)
 
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
 
-	assert.False(t, g.isReady(), "N-back is ready!")
+	assert.False(t, g.IsReady(), "N-back is ready!")
 	assert.Len(t, g.boxQueue, 3)
 	assert.Len(t, g.letterQueue, 3)
 
@@ -36,14 +36,14 @@ func TestGameNotReady(t *testing.T) {
 func TestNBackBeyondReady(t *testing.T) {
 	g := NewGame(3, 10)
 
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
-	g.nextSequence(makeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
+	g.NextSequence(MakeRandomItem())
 
-	assert.True(t, g.isReady(), "N-back is not ready!")
+	assert.True(t, g.IsReady(), "N-back is not ready!")
 	assert.Len(t, g.boxQueue, 4)
 	assert.Len(t, g.letterQueue, 4)
 }
@@ -61,18 +61,18 @@ func TestSelect(t *testing.T) {
 	}()
 
 	pulse <- struct{}{}
-	feed <- makeRandomItem()
+	feed <- MakeRandomItem()
 	pulse <- struct{}{}
-	feed <- makeRandomItem()
+	feed <- MakeRandomItem()
 	pulse <- struct{}{}
-	feed <- makeRandomItem()
+	feed <- MakeRandomItem()
 	pulse <- struct{}{}
-	feed <- makeRandomItem()
+	feed <- MakeRandomItem()
 	pulse <- struct{}{}
-	feed <- makeRandomItem()
+	feed <- MakeRandomItem()
 	toggleBox <- struct{}{}
 
-	assert.True(t, g.isReady(), "N-back is not ready!")
+	assert.True(t, g.IsReady(), "N-back is not ready!")
 	assert.Len(t, g.boxQueue, 4)
 	assert.Len(t, g.letterQueue, 4)
 }
@@ -93,66 +93,66 @@ func TestToggleCorrect(t *testing.T) {
 		Item{8, 1},
 	}
 
-	g.nextSequence(items[0])
-	g.nextSequence(items[1])
-	g.nextSequence(items[2])
-	g.nextSequence(items[0])
-	assert.Equal(t, 0, g.score)
+	g.NextSequence(items[0])
+	g.NextSequence(items[1])
+	g.NextSequence(items[2])
+	g.NextSequence(items[0])
+	assert.Equal(t, 0, g.Score)
 
 	g.toggleBox()
 	g.toggleLetter()
 	g.evalRound()
 
-	assert.Equal(t, 1, g.score)
+	assert.Equal(t, 1, g.Score)
 
-	g.nextSequence(items[1])
+	g.NextSequence(items[1])
 	g.toggleBox()
 	g.toggleLetter()
 	g.evalRound()
 
-	assert.Equal(t, 2, g.score)
+	assert.Equal(t, 2, g.Score)
 
-	g.nextSequence(items[2])
+	g.NextSequence(items[2])
 	g.evalRound()
 
-	assert.Equal(t, 2, g.score)
-	g.nextSequence(items[3])
+	assert.Equal(t, 2, g.Score)
+	g.NextSequence(items[3])
 	g.evalRound()
 
-	assert.Equal(t, 3, g.score)
+	assert.Equal(t, 3, g.Score)
 
-	g.nextSequence(items[4])
+	g.NextSequence(items[4])
 	g.toggleBox()
 	g.evalRound()
 
-	assert.Equal(t, 3, g.score)
+	assert.Equal(t, 3, g.Score)
 
-	g.nextSequence(items[5])
+	g.NextSequence(items[5])
 	g.toggleLetter()
 	g.evalRound()
 
-	assert.Equal(t, 3, g.score)
+	assert.Equal(t, 3, g.Score)
 
-	g.nextSequence(items[6])
+	g.NextSequence(items[6])
 	g.toggleLetter()
 	g.evalRound()
 
-	assert.Equal(t, 4, g.score)
+	assert.Equal(t, 4, g.Score)
 
-	g.nextSequence(items[7])
+	g.NextSequence(items[7])
 	g.toggleBox()
 	g.evalRound()
 
-	assert.Equal(t, 5, g.score)
+	assert.Equal(t, 5, g.Score)
 
-	g.nextSequence(items[8])
+	g.NextSequence(items[8])
 	g.evalRound()
-	assert.Equal(t, 6, g.score)
+	assert.Equal(t, 6, g.Score)
 
 	assert.False(t, g.isDone())
-	g.nextSequence(items[9])
+	g.NextSequence(items[9])
 	g.evalRound()
-	assert.Equal(t, 7, g.score)
+	assert.Equal(t, 7, g.Score)
 
 	assert.True(t, g.isDone())
 }
@@ -187,12 +187,12 @@ func TestLoop(t *testing.T) {
 			select {
 			case <-ticker.C:
 				if eval {
-					if g.isReady() {
+					if g.IsReady() {
 						g.evalRound()
 					}
 					eval = false
 				} else {
-					g.nextSequence(items[index])
+					g.NextSequence(items[index])
 					index++
 					eval = true
 				}
@@ -202,8 +202,7 @@ func TestLoop(t *testing.T) {
 
 	time.Sleep(1500 * time.Millisecond)
 	ticker.Stop()
-	assert.Equal(t, g.round, 10)
-	assert.Equal(t, g.score, 6)
+	assert.Equal(t, g.Round, 10)
+	assert.Equal(t, g.Score, 6)
 	assert.True(t, g.isDone())
-
 }

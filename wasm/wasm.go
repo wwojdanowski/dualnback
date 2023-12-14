@@ -1,4 +1,4 @@
-package main
+package wasm
 
 import (
 	"fmt"
@@ -6,12 +6,13 @@ import (
 )
 
 type Game struct {
-	n              int
+	N              int
+	Round          int
+	MaxRounds      int
+	LastResult     Result
+	Score          int
 	boxQueue       []int
 	letterQueue    []int
-	round          int
-	maxRounds      int
-	score          int
 	boxSelected    bool
 	letterSelected bool
 }
@@ -32,29 +33,29 @@ func (g *Game) firstLetter() int {
 	return g.letterQueue[0]
 }
 
-func (g *Game) isReady() bool {
-	return g.n+1 == len(g.boxQueue)
+func (g *Game) IsReady() bool {
+	return g.N+1 == len(g.boxQueue)
 }
 
 func (g *Game) isCompleted() bool {
-	return g.maxRounds == g.round
+	return g.MaxRounds == g.Round
 }
 
 func NewGame(n int, maxRounds int) *Game {
 	g := Game{}
-	g.n = n
-	g.maxRounds = maxRounds
+	g.N = n
+	g.MaxRounds = maxRounds
 	g.boxQueue = make([]int, 0, n+1)
 	g.letterQueue = make([]int, 0, n+1)
 	return &g
 }
 
 func makeItem(box, letter int) Item {
-	return Item{box: box, letter: letter}
+	return Item{Box: box, Letter: letter}
 }
 
-func makeRandomItem() Item {
-	return Item{box: makeBox(), letter: makeLetter()}
+func MakeRandomItem() Item {
+	return Item{Box: makeBox(), Letter: makeLetter()}
 }
 
 func makeBox() int {
@@ -73,9 +74,15 @@ func (g *Game) toggleLetter() {
 	g.letterSelected = !g.letterSelected
 }
 
-func (g *Game) evalRound() {
-	g.round += 1
+type Result struct {
+	Box    bool
+	Letter bool
+}
+
+func (g *Game) EvalRound() {
+	result := Result{true, true}
 	score := false
+	g.Round += 1
 
 	if g.nLastBox() == g.firstBox() {
 		score = g.boxSelected
@@ -89,17 +96,22 @@ func (g *Game) evalRound() {
 		} else {
 			score = !g.letterSelected
 		}
+	} else {
+		result.Box = false
 	}
 
 	if score {
-		g.score += 1
+		g.Score += 1
+	} else {
+		result.Letter = false
 	}
 
+	g.LastResult = result
 	g.resetToggles()
 }
 
-func (g *Game) isDone() bool {
-	return g.round == g.maxRounds
+func (g *Game) IsDone() bool {
+	return g.Round == g.MaxRounds
 }
 
 func (g *Game) resetToggles() {
@@ -107,12 +119,12 @@ func (g *Game) resetToggles() {
 	g.letterSelected = false
 }
 
-func (g *Game) nextSequence(item Item) Item {
-	b := item.box
-	l := item.letter
+func (g *Game) NextSequence(item Item) Item {
+	b := item.Box
+	l := item.Letter
 
-	if g.isReady() {
-		for i := g.n; i > 0; i-- {
+	if g.IsReady() {
+		for i := g.N; i > 0; i-- {
 			g.boxQueue[i] = g.boxQueue[i-1]
 			g.letterQueue[i] = g.letterQueue[i-1]
 		}
@@ -133,15 +145,15 @@ func (g *Game) nextSequence(item Item) Item {
 }
 
 type Item struct {
-	box    int
-	letter int
+	Box    int
+	Letter int
 }
 
 func (g *Game) scoreRound(hit bool) {
 	if hit {
-		g.score += 1
+		g.Score += 1
 	}
-	g.round += 1
+	g.Round += 1
 }
 
 func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, feed <-chan Item) {
@@ -151,17 +163,17 @@ func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLette
 	for {
 		select {
 		case <-pulse:
-			if g.isReady() {
-				if isCorrect(g, lastItem.box, lastItem.letter, boxPicked, letterPicked) {
+			if g.IsReady() {
+				if isCorrect(g, lastItem.Box, lastItem.Letter, boxPicked, letterPicked) {
 					g.scoreRound(false)
 				} else {
 					g.scoreRound(true)
 				}
 				item := <-feed
-				lastItem = g.nextSequence(item)
+				lastItem = g.NextSequence(item)
 			} else {
 				item := <-feed
-				g.nextSequence(item)
+				g.NextSequence(item)
 			}
 			// feed <- item
 
@@ -171,7 +183,7 @@ func loop(g *Game, pulse <-chan struct{}, toggleBox <-chan struct{}, toggleLette
 			letterPicked = !letterPicked
 		}
 	}
-	if g.round == g.maxRounds {
+	if g.Round == g.MaxRounds {
 
 	}
 }
