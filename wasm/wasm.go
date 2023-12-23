@@ -66,11 +66,19 @@ func makeLetter() int {
 	return rand.Intn(5)
 }
 
-func (g *Game) toggleBox() {
+func (g *Game) IsBoxToggled() bool {
+	return g.boxSelected
+}
+
+func (g *Game) IsLetterToggled() bool {
+	return g.letterSelected
+}
+
+func (g *Game) ToggleBox() {
 	g.boxSelected = !g.boxSelected
 }
 
-func (g *Game) toggleLetter() {
+func (g *Game) ToggleLetter() {
 	g.letterSelected = !g.letterSelected
 }
 

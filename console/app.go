@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -51,7 +52,6 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 		s.SetContent(x2, row, tcell.RuneVLine, nil, style)
 	}
 
-	// Only draw corners if necessary
 	if y1 != y2 && x1 != x2 {
 		s.SetContent(x1, y1, tcell.RuneULCorner, nil, style)
 		s.SetContent(x2, y1, tcell.RuneURCorner, nil, style)
@@ -120,9 +120,8 @@ func main() {
 
 	notReadyToBePressedStyle := tcell.StyleDefault.Background(tcell.ColorGray).Foreground(tcell.ColorWhite)
 	readyToBePressedStyle := tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorWhite)
-	// toggledStyle := tcell.StyleDefault.Background(tcell.ColorBlue).Foreground(tcell.ColorWhite)
+	toggledStyle := tcell.StyleDefault.Background(tcell.ColorBlue).Foreground(tcell.ColorWhite)
 
-	// Initialize screen
 	s, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatalf("%+v", err)
@@ -135,7 +134,11 @@ func main() {
 	s.EnablePaste()
 	s.Clear()
 
-	g := game.NewGame(2, 50)
+	nbackPtr := flag.Int("n", 2, "N-back")
+	roundsPtr := flag.Int("rounds", 2, "Max rounds")
+
+	flag.Parse()
+	g := game.NewGame(*nbackPtr, *roundsPtr)
 
 	drawBox(s, 0, 0, 60, 12, defStyle, "")
 	drawGrid(s, 1, 1, 3, 3, boxStyle)
@@ -144,15 +147,31 @@ func main() {
 	drawText(s, 10, 10, 50, 15, notReadyToBePressedStyle, "PLACE")
 	drawText(s, 18, 10, 50, 15, notReadyToBePressedStyle, "LETTER")
 
-	ticker := time.NewTicker(3000 * time.Millisecond)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	toggleBox := make(chan struct{})
+	toggleLetter := make(chan struct{})
+	done := make(chan bool)
 
 	go func() {
-		eval := false
+		state := 0
 		for {
 			select {
 			case <-ticker.C:
-				// printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
-				if eval {
+				switch state {
+				case 0:
+					newItem := game.MakeRandomItem()
+					g.NextSequence(newItem)
+					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
+					if g.IsReady() {
+						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					}
+					state = 1
+					ticker.Reset(2000 * time.Millisecond)
+				case 1:
+					drawGrid(s, 1, 1, 3, 3, boxStyle)
+					state = 2
+				case 2:
 					if g.IsReady() {
 						g.EvalRound()
 						if g.LastResult.Box {
@@ -167,32 +186,49 @@ func main() {
 							drawText(s, 18, 10, 50, 15, wrongStyle, "LETTER")
 						}
 					}
-					eval = false
-					drawGrid(s, 1, 1, 3, 3, boxStyle)
-				} else {
-					newItem := game.MakeRandomItem()
-					g.NextSequence(newItem)
-					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
+					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+					state = 3
+					ticker.Reset(1000 * time.Millisecond)
+				case 3:
 					if g.IsReady() {
 						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 					}
-					eval = true
+					state = 0
 				}
+
 				s.Sync()
 				if g.IsDone() {
 					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
 					s.Sync()
+					done <- true
 					return
+				}
+			case <-toggleBox:
+				if g.IsReady() && (state == 1 || state == 2) {
+					g.ToggleBox()
+					if g.IsBoxToggled() {
+						drawText(s, 10, 10, 50, 15, toggledStyle, "PLACE")
+					} else {
+						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+					}
+					s.Sync()
+				}
+			case <-toggleLetter:
+				if g.IsReady() && (state == 1 || state == 2) {
+					g.ToggleLetter()
+					if g.IsLetterToggled() {
+						drawText(s, 18, 10, 50, 15, toggledStyle, "LETTER")
+					} else {
+						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					}
+					s.Sync()
 				}
 			}
 		}
 	}()
 
 	quit := func() {
-		// You have to catch panics in a defer, clean up, and
-		// re-raise them - otherwise your application can
-		// die without leaving any diagnostic trace.
 		maybePanic := recover()
 		s.Fini()
 		if maybePanic != nil {
@@ -201,42 +237,41 @@ func main() {
 	}
 	defer quit()
 
-	// Here's how to get the screen size when you need it.
-	// xmax, ymax := s.Size()
-
-	// Here's an example of how to inject a keystroke where it will
-	// be picked up by the next PollEvent call.  Note that the
-	// queue is LIFO, it has a limited length, and PostEvent() can
-	// return an error.
-	// s.PostEvent(tcell.NewEventKey(tcell.KeyRune, rune('a'), 0))
-
-	// Event loop
 	for {
-		// Update screen
 		s.Show()
 
-		// Poll event
 		ev := s.PollEvent()
-
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
+		select {
+		case <-done:
+			ticker.Stop()
+			close(toggleBox)
+			close(toggleLetter)
+			drawBox(s, 0, 0, 60, 12, defStyle, "We're done!")
 			s.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				return
-			} else if ev.Key() == tcell.KeyCtrlL {
+			// return
+		default:
+			switch ev := ev.(type) {
+			case *tcell.EventResize:
 				s.Sync()
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
-				s.Clear()
-			}
-		case *tcell.EventMouse:
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+					return
+				} else if ev.Key() == tcell.KeyCtrlL {
+					s.Sync()
+				} else if ev.Rune() == 'A' || ev.Rune() == 'a' {
+					toggleBox <- struct{}{}
+				} else if ev.Rune() == 'L' || ev.Rune() == 'l' {
+					toggleLetter <- struct{}{}
+				}
+			case *tcell.EventMouse:
 
-			switch ev.Buttons() {
-			case tcell.Button1, tcell.Button2:
+				switch ev.Buttons() {
+				case tcell.Button1, tcell.Button2:
 
-			case tcell.ButtonNone:
+				case tcell.ButtonNone:
+				}
 			}
 		}
+
 	}
 }
