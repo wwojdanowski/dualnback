@@ -111,6 +111,11 @@ func printScoreBoard(s tcell.Screen, x1, y1, x2, y2 int, n, score, rounds, maxRo
 func drawInputStatus(s tcell.Screen, x1, y1, x2, y2 int, result game.Result, style tcell.Style) {
 }
 
+const ()
+
+type GameState struct {
+}
+
 func main() {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorBlack)
@@ -163,38 +168,51 @@ func main() {
 					g.NextSequence(newItem)
 					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
 					if g.IsReady() {
+						state = 5
 						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					} else {
+						state = 1
 					}
-					state = 1
 					ticker.Reset(2000 * time.Millisecond)
 				case 1:
 					drawGrid(s, 1, 1, 3, 3, boxStyle)
 					state = 2
 				case 2:
-					if g.IsReady() {
-						g.EvalRound()
-						if g.LastResult.Box {
-							drawText(s, 10, 10, 50, 15, correctStyle, "PLACE")
-						} else {
-							drawText(s, 10, 10, 50, 15, wrongStyle, "PLACE")
-						}
+					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+					state = 0
+					ticker.Reset(1000 * time.Millisecond)
+				case 4:
+					newItem := game.MakeRandomItem()
+					g.NextSequence(newItem)
+					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
+					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					state = 5
+					ticker.Reset(2000 * time.Millisecond)
+				case 5:
+					drawGrid(s, 1, 1, 3, 3, boxStyle)
+					state = 6
+				case 6:
+					g.EvalRound()
+					if g.LastResult.Box {
+						drawText(s, 10, 10, 50, 15, correctStyle, "PLACE")
+					} else {
+						drawText(s, 10, 10, 50, 15, wrongStyle, "PLACE")
+					}
 
-						if g.LastResult.Letter {
-							drawText(s, 18, 10, 50, 15, correctStyle, "LETTER")
-						} else {
-							drawText(s, 18, 10, 50, 15, wrongStyle, "LETTER")
-						}
+					if g.LastResult.Letter {
+						drawText(s, 18, 10, 50, 15, correctStyle, "LETTER")
+					} else {
+						drawText(s, 18, 10, 50, 15, wrongStyle, "LETTER")
 					}
 					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
-					state = 3
+					state = 7
 					ticker.Reset(1000 * time.Millisecond)
-				case 3:
-					if g.IsReady() {
-						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
-					}
-					state = 0
+				case 7:
+					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					state = 4
 				}
 
 				s.Sync()
@@ -205,7 +223,7 @@ func main() {
 					return
 				}
 			case <-toggleBox:
-				if g.IsReady() && (state == 1 || state == 2) {
+				if state == 5 || state == 6 {
 					g.ToggleBox()
 					if g.IsBoxToggled() {
 						drawText(s, 10, 10, 50, 15, toggledStyle, "PLACE")
@@ -215,7 +233,7 @@ func main() {
 					s.Sync()
 				}
 			case <-toggleLetter:
-				if g.IsReady() && (state == 1 || state == 2) {
+				if state == 5 || state == 6 {
 					g.ToggleLetter()
 					if g.IsLetterToggled() {
 						drawText(s, 18, 10, 50, 15, toggledStyle, "LETTER")
@@ -248,7 +266,6 @@ func main() {
 			close(toggleLetter)
 			drawBox(s, 0, 0, 60, 12, defStyle, "We're done!")
 			s.Sync()
-			// return
 		default:
 			switch ev := ev.(type) {
 			case *tcell.EventResize:
