@@ -111,7 +111,16 @@ func printScoreBoard(s tcell.Screen, x1, y1, x2, y2 int, n, score, rounds, maxRo
 func drawInputStatus(s tcell.Screen, x1, y1, x2, y2 int, result game.Result, style tcell.Style) {
 }
 
-const ()
+const (
+	NewSequenceState = iota
+	PauseForDecisionState
+	EvalRoundState
+
+	NewSequenceStateGameReady
+	PauseForDecisionStateGameReady
+	EvalRoundStateGameReady
+	PostRoundStateGameReady
+)
 
 type GameState struct {
 }
@@ -158,42 +167,42 @@ func main() {
 	done := make(chan bool)
 
 	go func() {
-		state := 0
+		state := NewSequenceState
 		for {
 			select {
 			case <-ticker.C:
 				switch state {
-				case 0:
+				case NewSequenceState:
 					newItem := game.MakeRandomItem()
 					g.NextSequence(newItem)
 					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
 					if g.IsReady() {
-						state = 5
+						state = PauseForDecisionStateGameReady
 						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 					} else {
-						state = 1
+						state = PauseForDecisionState
 					}
 					ticker.Reset(2000 * time.Millisecond)
-				case 1:
+				case PauseForDecisionState:
 					drawGrid(s, 1, 1, 3, 3, boxStyle)
-					state = 2
-				case 2:
+					state = EvalRoundState
+				case EvalRoundState:
 					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
-					state = 0
+					state = NewSequenceState
 					ticker.Reset(1000 * time.Millisecond)
-				case 4:
+				case NewSequenceStateGameReady:
 					newItem := game.MakeRandomItem()
 					g.NextSequence(newItem)
 					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
 					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
-					state = 5
+					state = PauseForDecisionStateGameReady
 					ticker.Reset(2000 * time.Millisecond)
-				case 5:
+				case PauseForDecisionStateGameReady:
 					drawGrid(s, 1, 1, 3, 3, boxStyle)
-					state = 6
-				case 6:
+					state = EvalRoundStateGameReady
+				case EvalRoundStateGameReady:
 					g.EvalRound()
 					if g.LastResult.Box {
 						drawText(s, 10, 10, 50, 15, correctStyle, "PLACE")
@@ -207,12 +216,12 @@ func main() {
 						drawText(s, 18, 10, 50, 15, wrongStyle, "LETTER")
 					}
 					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
-					state = 7
+					state = PostRoundStateGameReady
 					ticker.Reset(1000 * time.Millisecond)
-				case 7:
+				case PostRoundStateGameReady:
 					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
-					state = 4
+					state = NewSequenceStateGameReady
 				}
 
 				s.Sync()
@@ -223,7 +232,7 @@ func main() {
 					return
 				}
 			case <-toggleBox:
-				if state == 5 || state == 6 {
+				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
 					g.ToggleBox()
 					if g.IsBoxToggled() {
 						drawText(s, 10, 10, 50, 15, toggledStyle, "PLACE")
@@ -233,7 +242,7 @@ func main() {
 					s.Sync()
 				}
 			case <-toggleLetter:
-				if state == 5 || state == 6 {
+				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
 					g.ToggleLetter()
 					if g.IsLetterToggled() {
 						drawText(s, 18, 10, 50, 15, toggledStyle, "LETTER")
