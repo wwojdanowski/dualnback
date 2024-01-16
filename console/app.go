@@ -180,6 +180,24 @@ func (o *SimpleGameObserver) RoundFinished(g *game.Game) {
 	drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 }
 
+func (o *SimpleGameObserver) ToggleBox(g *game.Game) {
+	if g.IsBoxToggled() {
+		drawText(o.s, 10, 10, 50, 15, toggledStyle, "PLACE")
+	} else {
+		drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+	}
+	o.s.Sync()
+}
+
+func (o *SimpleGameObserver) ToggleLetter(g *game.Game) {
+	if g.IsLetterToggled() {
+		drawText(o.s, 18, 10, 50, 15, toggledStyle, "LETTER")
+	} else {
+		drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+	}
+	o.s.Sync()
+}
+
 func (o *SimpleGameObserver) StateProcessed(g *game.Game) {
 	o.s.Sync()
 	if g.IsDone() {
@@ -270,22 +288,13 @@ func main() {
 			case <-toggleBox:
 				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
 					g.ToggleBox()
-					if g.IsBoxToggled() {
-						drawText(s, 10, 10, 50, 15, toggledStyle, "PLACE")
-					} else {
-						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-					}
-					s.Sync()
+					observer.ToggleBox(g)
+
 				}
 			case <-toggleLetter:
 				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
 					g.ToggleLetter()
-					if g.IsLetterToggled() {
-						drawText(s, 18, 10, 50, 15, toggledStyle, "LETTER")
-					} else {
-						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
-					}
-					s.Sync()
+					observer.ToggleLetter(g)
 				}
 			}
 		}
