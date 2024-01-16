@@ -127,6 +127,7 @@ type GameObserver interface {
 	PauseForDecision(*game.Game)
 	EvalRound(*game.Game)
 	RoundFinished(*game.Game)
+	StateProcessed(*game.Game)
 }
 
 type SimpleGameObserver struct {
@@ -177,6 +178,16 @@ func (o *SimpleGameObserver) EvalRound(g *game.Game) {
 func (o *SimpleGameObserver) RoundFinished(g *game.Game) {
 	drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 	drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+}
+
+func (o *SimpleGameObserver) StateProcessed(g *game.Game) {
+	o.s.Sync()
+	if g.IsDone() {
+		printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+		o.s.Sync()
+		done <- true
+		return
+	}
 }
 
 func main() {
@@ -254,14 +265,8 @@ func main() {
 					observer.RoundFinished(g)
 					state = NewSequenceStateGameReady
 				}
+				observer.StateProcessed(g)
 
-				s.Sync()
-				if g.IsDone() {
-					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
-					s.Sync()
-					done <- true
-					return
-				}
 			case <-toggleBox:
 				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
 					g.ToggleBox()
