@@ -128,10 +128,13 @@ type GameObserver interface {
 	EvalRound(*game.Game)
 	RoundFinished(*game.Game)
 	StateProcessed(*game.Game)
+	ToggleBox(*game.Game)
+	ToggleLetter(*game.Game)
 }
 
 type SimpleGameObserver struct {
-	s tcell.Screen
+	s    tcell.Screen
+	done chan bool
 }
 
 var defStyle = tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
@@ -201,10 +204,105 @@ func (o *SimpleGameObserver) ToggleLetter(g *game.Game) {
 func (o *SimpleGameObserver) StateProcessed(g *game.Game) {
 	o.s.Sync()
 	if g.IsDone() {
-		printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+		printScoreBoard(o.s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
 		o.s.Sync()
-		done <- true
+		o.done <- true
 		return
+	}
+}
+
+func flowLoop(ticker *time.Ticker, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, g *game.Game, observer GameObserver) {
+	state := NewSequenceState
+	for {
+		select {
+		case <-ticker.C:
+			switch state {
+			case NewSequenceState:
+				newItem := game.MakeRandomItem()
+				g.NextSequence(newItem)
+				observer.NewSequence(g, newItem)
+				if g.IsReady() {
+					state = PauseForDecisionStateGameReady
+				} else {
+					state = PauseForDecisionState
+				}
+				ticker.Reset(2000 * time.Millisecond)
+			case PauseForDecisionState:
+				observer.PauseForDecision(g)
+				state = EvalRoundState
+			case EvalRoundState:
+				observer.EvalRound(g)
+				state = NewSequenceState
+				ticker.Reset(1000 * time.Millisecond)
+			case NewSequenceStateGameReady:
+				newItem := game.MakeRandomItem()
+				g.NextSequence(newItem)
+				observer.NewSequence(g, newItem)
+				state = PauseForDecisionStateGameReady
+				ticker.Reset(2000 * time.Millisecond)
+			case PauseForDecisionStateGameReady:
+				observer.PauseForDecision(g)
+				state = EvalRoundStateGameReady
+			case EvalRoundStateGameReady:
+				g.EvalRound()
+				observer.EvalRound(g)
+				state = PostRoundStateGameReady
+				ticker.Reset(1000 * time.Millisecond)
+			case PostRoundStateGameReady:
+				observer.RoundFinished(g)
+				state = NewSequenceStateGameReady
+			}
+			observer.StateProcessed(g)
+
+		case <-toggleBox:
+			if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
+				g.ToggleBox()
+				observer.ToggleBox(g)
+
+			}
+		case <-toggleLetter:
+			if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
+				g.ToggleLetter()
+				observer.ToggleLetter(g)
+			}
+		}
+	}
+}
+
+func controlLoop(s tcell.Screen, done chan bool, ticker *time.Ticker, toggleBox chan struct{}, toggleLetter chan struct{}) {
+	for {
+		s.Show()
+		ev := s.PollEvent()
+		select {
+		case <-done:
+			ticker.Stop()
+			close(toggleBox)
+			close(toggleLetter)
+			drawBox(s, 0, 0, 60, 12, defStyle, "We're done!")
+			s.Sync()
+		default:
+			switch ev := ev.(type) {
+			case *tcell.EventResize:
+				s.Sync()
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+					return
+				} else if ev.Key() == tcell.KeyCtrlL {
+					s.Sync()
+				} else if ev.Rune() == 'A' || ev.Rune() == 'a' {
+					toggleBox <- struct{}{}
+				} else if ev.Rune() == 'L' || ev.Rune() == 'l' {
+					toggleLetter <- struct{}{}
+				}
+			case *tcell.EventMouse:
+
+				switch ev.Buttons() {
+				case tcell.Button1, tcell.Button2:
+
+				case tcell.ButtonNone:
+				}
+			}
+		}
 	}
 }
 
@@ -240,65 +338,9 @@ func main() {
 	toggleLetter := make(chan struct{})
 	done := make(chan bool)
 
-	observer := SimpleGameObserver{s}
+	observer := SimpleGameObserver{s, done}
 
-	go func() {
-		state := NewSequenceState
-		for {
-			select {
-			case <-ticker.C:
-				switch state {
-				case NewSequenceState:
-					newItem := game.MakeRandomItem()
-					g.NextSequence(newItem)
-					observer.NewSequence(g, newItem)
-					if g.IsReady() {
-						state = PauseForDecisionStateGameReady
-					} else {
-						state = PauseForDecisionState
-					}
-					ticker.Reset(2000 * time.Millisecond)
-				case PauseForDecisionState:
-					observer.PauseForDecision(g)
-					state = EvalRoundState
-				case EvalRoundState:
-					observer.EvalRound(g)
-					state = NewSequenceState
-					ticker.Reset(1000 * time.Millisecond)
-				case NewSequenceStateGameReady:
-					newItem := game.MakeRandomItem()
-					g.NextSequence(newItem)
-					observer.NewSequence(g, newItem)
-					state = PauseForDecisionStateGameReady
-					ticker.Reset(2000 * time.Millisecond)
-				case PauseForDecisionStateGameReady:
-					observer.PauseForDecision(g)
-					state = EvalRoundStateGameReady
-				case EvalRoundStateGameReady:
-					g.EvalRound()
-					observer.EvalRound(g)
-					state = PostRoundStateGameReady
-					ticker.Reset(1000 * time.Millisecond)
-				case PostRoundStateGameReady:
-					observer.RoundFinished(g)
-					state = NewSequenceStateGameReady
-				}
-				observer.StateProcessed(g)
-
-			case <-toggleBox:
-				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
-					g.ToggleBox()
-					observer.ToggleBox(g)
-
-				}
-			case <-toggleLetter:
-				if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
-					g.ToggleLetter()
-					observer.ToggleLetter(g)
-				}
-			}
-		}
-	}()
+	go flowLoop(ticker, toggleBox, toggleLetter, g, &observer)
 
 	quit := func() {
 		maybePanic := recover()
@@ -308,41 +350,5 @@ func main() {
 		}
 	}
 	defer quit()
-
-	for {
-		s.Show()
-
-		ev := s.PollEvent()
-		select {
-		case <-done:
-			ticker.Stop()
-			close(toggleBox)
-			close(toggleLetter)
-			drawBox(s, 0, 0, 60, 12, defStyle, "We're done!")
-			s.Sync()
-		default:
-			switch ev := ev.(type) {
-			case *tcell.EventResize:
-				s.Sync()
-			case *tcell.EventKey:
-				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-					return
-				} else if ev.Key() == tcell.KeyCtrlL {
-					s.Sync()
-				} else if ev.Rune() == 'A' || ev.Rune() == 'a' {
-					toggleBox <- struct{}{}
-				} else if ev.Rune() == 'L' || ev.Rune() == 'l' {
-					toggleLetter <- struct{}{}
-				}
-			case *tcell.EventMouse:
-
-				switch ev.Buttons() {
-				case tcell.Button1, tcell.Button2:
-
-				case tcell.ButtonNone:
-				}
-			}
-		}
-
-	}
+	controlLoop(s, done, ticker, toggleBox, toggleLetter)
 }
