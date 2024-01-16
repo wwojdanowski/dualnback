@@ -52,12 +52,12 @@ func TestSelect(t *testing.T) {
 	g := NewGame(3, 10)
 
 	pulse := make(chan struct{})
-	toggleBox := make(chan struct{})
-	toggleLetter := make(chan struct{})
+	ToggleBox := make(chan struct{})
+	ToggleLetter := make(chan struct{})
 	feed := make(chan Item)
 
 	go func() {
-		loop(g, pulse, toggleBox, toggleLetter, feed)
+		loop(g, pulse, ToggleBox, ToggleLetter, feed)
 	}()
 
 	pulse <- struct{}{}
@@ -70,7 +70,7 @@ func TestSelect(t *testing.T) {
 	feed <- MakeRandomItem()
 	pulse <- struct{}{}
 	feed <- MakeRandomItem()
-	toggleBox <- struct{}{}
+	ToggleBox <- struct{}{}
 
 	assert.True(t, g.IsReady(), "N-back is not ready!")
 	assert.Len(t, g.boxQueue, 4)
@@ -99,62 +99,62 @@ func TestToggleCorrect(t *testing.T) {
 	g.NextSequence(items[0])
 	assert.Equal(t, 0, g.Score)
 
-	g.toggleBox()
-	g.toggleLetter()
-	g.evalRound()
+	g.ToggleBox()
+	g.ToggleLetter()
+	g.EvalRound()
 
 	assert.Equal(t, 1, g.Score)
 
 	g.NextSequence(items[1])
-	g.toggleBox()
-	g.toggleLetter()
-	g.evalRound()
+	g.ToggleBox()
+	g.ToggleLetter()
+	g.EvalRound()
 
 	assert.Equal(t, 2, g.Score)
 
 	g.NextSequence(items[2])
-	g.evalRound()
+	g.EvalRound()
 
 	assert.Equal(t, 2, g.Score)
 	g.NextSequence(items[3])
-	g.evalRound()
+	g.EvalRound()
 
 	assert.Equal(t, 3, g.Score)
 
 	g.NextSequence(items[4])
-	g.toggleBox()
-	g.evalRound()
+	g.ToggleBox()
+	g.EvalRound()
 
 	assert.Equal(t, 3, g.Score)
 
 	g.NextSequence(items[5])
-	g.toggleLetter()
-	g.evalRound()
+	g.ToggleLetter()
+	g.EvalRound()
 
 	assert.Equal(t, 3, g.Score)
 
 	g.NextSequence(items[6])
-	g.toggleLetter()
-	g.evalRound()
+	g.ToggleLetter()
+	g.EvalRound()
 
 	assert.Equal(t, 4, g.Score)
 
 	g.NextSequence(items[7])
-	g.toggleBox()
-	g.evalRound()
+	g.ToggleBox()
+	g.EvalRound()
 
 	assert.Equal(t, 5, g.Score)
 
 	g.NextSequence(items[8])
-	g.evalRound()
+	g.EvalRound()
 	assert.Equal(t, 6, g.Score)
 
-	assert.False(t, g.isDone())
+	assert.False(t, g.IsDone())
 	g.NextSequence(items[9])
-	g.evalRound()
+	g.EvalRound()
 	assert.Equal(t, 7, g.Score)
 
-	assert.True(t, g.isDone())
+	assert.True(t, g.IsDone())
 }
 
 func TestLoop(t *testing.T) {
@@ -188,7 +188,7 @@ func TestLoop(t *testing.T) {
 			case <-ticker.C:
 				if eval {
 					if g.IsReady() {
-						g.evalRound()
+						g.EvalRound()
 					}
 					eval = false
 				} else {
@@ -204,5 +204,5 @@ func TestLoop(t *testing.T) {
 	ticker.Stop()
 	assert.Equal(t, g.Round, 10)
 	assert.Equal(t, g.Score, 6)
-	assert.True(t, g.isDone())
+	assert.True(t, g.IsDone())
 }

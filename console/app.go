@@ -122,19 +122,64 @@ const (
 	PostRoundStateGameReady
 )
 
-type GameState struct {
+type GameObserver interface {
+	NewSequence(*game.Game, game.Item)
+	PauseForDecision(*game.Game)
+	EvalRound(*game.Game)
+	RoundFinished(*game.Game)
+}
+
+type SimpleGameObserver struct {
+	s tcell.Screen
+}
+
+var defStyle = tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+var boxStyle = tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorBlack)
+var itemStyle = tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.ColorGreenYellow)
+var correctStyle = tcell.StyleDefault.Background(tcell.ColorGreenYellow).Foreground(tcell.ColorBlack)
+var wrongStyle = tcell.StyleDefault.Background(tcell.ColorRed).Foreground(tcell.ColorWhite)
+
+var notReadyToBePressedStyle = tcell.StyleDefault.Background(tcell.ColorGray).Foreground(tcell.ColorWhite)
+var readyToBePressedStyle = tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorWhite)
+var toggledStyle = tcell.StyleDefault.Background(tcell.ColorBlue).Foreground(tcell.ColorWhite)
+
+func (o *SimpleGameObserver) NewSequence(g *game.Game, newItem game.Item) {
+	drawGridWithItem(o.s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
+	if g.IsReady() {
+		drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+		drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+	}
+}
+
+func (o *SimpleGameObserver) PauseForDecision(g *game.Game) {
+	drawGrid(o.s, 1, 1, 3, 3, boxStyle)
+}
+
+func (o *SimpleGameObserver) EvalRound(g *game.Game) {
+
+	if g.IsReady() {
+		if g.LastResult.Box {
+			drawText(o.s, 10, 10, 50, 15, correctStyle, "PLACE")
+		} else {
+			drawText(o.s, 10, 10, 50, 15, wrongStyle, "PLACE")
+		}
+
+		if g.LastResult.Letter {
+			drawText(o.s, 18, 10, 50, 15, correctStyle, "LETTER")
+		} else {
+			drawText(o.s, 18, 10, 50, 15, wrongStyle, "LETTER")
+		}
+	}
+
+	printScoreBoard(o.s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+}
+
+func (o *SimpleGameObserver) RoundFinished(g *game.Game) {
+	drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+	drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 }
 
 func main() {
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorBlack)
-	itemStyle := tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.ColorGreenYellow)
-	correctStyle := tcell.StyleDefault.Background(tcell.ColorGreenYellow).Foreground(tcell.ColorBlack)
-	wrongStyle := tcell.StyleDefault.Background(tcell.ColorRed).Foreground(tcell.ColorWhite)
-
-	notReadyToBePressedStyle := tcell.StyleDefault.Background(tcell.ColorGray).Foreground(tcell.ColorWhite)
-	readyToBePressedStyle := tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorWhite)
-	toggledStyle := tcell.StyleDefault.Background(tcell.ColorBlue).Foreground(tcell.ColorWhite)
 
 	s, err := tcell.NewScreen()
 	if err != nil {
@@ -166,6 +211,8 @@ func main() {
 	toggleLetter := make(chan struct{})
 	done := make(chan bool)
 
+	observer := SimpleGameObserver{s}
+
 	go func() {
 		state := NewSequenceState
 		for {
@@ -175,52 +222,36 @@ func main() {
 				case NewSequenceState:
 					newItem := game.MakeRandomItem()
 					g.NextSequence(newItem)
-					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
+					observer.NewSequence(g, newItem)
 					if g.IsReady() {
 						state = PauseForDecisionStateGameReady
-						drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-						drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 					} else {
 						state = PauseForDecisionState
 					}
 					ticker.Reset(2000 * time.Millisecond)
 				case PauseForDecisionState:
-					drawGrid(s, 1, 1, 3, 3, boxStyle)
+					observer.PauseForDecision(g)
 					state = EvalRoundState
 				case EvalRoundState:
-					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+					observer.EvalRound(g)
 					state = NewSequenceState
 					ticker.Reset(1000 * time.Millisecond)
 				case NewSequenceStateGameReady:
 					newItem := game.MakeRandomItem()
 					g.NextSequence(newItem)
-					drawGridWithItem(s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
-					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					observer.NewSequence(g, newItem)
 					state = PauseForDecisionStateGameReady
 					ticker.Reset(2000 * time.Millisecond)
 				case PauseForDecisionStateGameReady:
-					drawGrid(s, 1, 1, 3, 3, boxStyle)
+					observer.PauseForDecision(g)
 					state = EvalRoundStateGameReady
 				case EvalRoundStateGameReady:
 					g.EvalRound()
-					if g.LastResult.Box {
-						drawText(s, 10, 10, 50, 15, correctStyle, "PLACE")
-					} else {
-						drawText(s, 10, 10, 50, 15, wrongStyle, "PLACE")
-					}
-
-					if g.LastResult.Letter {
-						drawText(s, 18, 10, 50, 15, correctStyle, "LETTER")
-					} else {
-						drawText(s, 18, 10, 50, 15, wrongStyle, "LETTER")
-					}
-					printScoreBoard(s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+					observer.EvalRound(g)
 					state = PostRoundStateGameReady
 					ticker.Reset(1000 * time.Millisecond)
 				case PostRoundStateGameReady:
-					drawText(s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-					drawText(s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+					observer.RoundFinished(g)
 					state = NewSequenceStateGameReady
 				}
 
