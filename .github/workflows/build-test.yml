@@ -53,4 +53,4 @@ jobs:
 
       - name: Dual-N-Back test
         id: dnb-test
-        run: go test -timeout 30s
+        run: go test -timeout 30s -v `go list ./... | grep -v wasm`
