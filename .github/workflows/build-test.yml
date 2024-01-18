@@ -25,7 +25,7 @@ jobs:
             exit 1
           fi
   maven:
-    name: Maven Build & Test
+    name: go Build & Test
     runs-on: ubuntu-latest
     permissions:
       contents: write
