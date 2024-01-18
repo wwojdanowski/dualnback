@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 )
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	fmt.Println("Starting serving content on port 8080")
+	http.Handle("/", http.FileServer(http.Dir("wasm/static")))
 	http.ListenAndServe(":8080", nil)
 }

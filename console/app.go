@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	game "dualnback/wasm"
+	game "dualnback/game"
 
 	tcell "github.com/gdamore/tcell/v2"
 )
