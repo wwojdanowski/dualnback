@@ -15,11 +15,13 @@ func drawGrid(this js.Value, p []js.Value) interface{} {
 	context := canvas.Call("getContext", "2d")
 
 	cellSize := 100
+	cellMargin := 10
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
 			x := j * cellSize
 			y := i * cellSize
-			context.Call("fillRect", x, y, cellSize, cellSize)
+			context.Call("fillRect", x+cellMargin, y+cellMargin,
+				cellSize-cellMargin, cellSize-cellMargin)
 		}
 	}
 
