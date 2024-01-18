@@ -50,6 +50,10 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: 'stable'
+        
+      - name: Build
+        id: dnb-build
+        run: go mod tidy
 
       - name: Dual-N-Back test
         id: dnb-test
