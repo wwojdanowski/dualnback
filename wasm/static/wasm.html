@@ -9,10 +9,12 @@
     <script src="wasm_exec.js" type="application/javascript"></script>
     <script>
         async function run() {
+
             const go = new Go();
             const wasm = await WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject);
             go.run(wasm.instance);
             drawGrid();
+            
         }
         run();
     </script>
