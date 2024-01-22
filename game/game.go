@@ -5,6 +5,16 @@ import (
 	"math/rand"
 )
 
+type GameObserver interface {
+	NewSequence(*Game, Item)
+	PauseForDecision(*Game)
+	EvalRound(*Game)
+	RoundFinished(*Game)
+	StateProcessed(*Game)
+	ToggleBox(*Game)
+	ToggleLetter(*Game)
+}
+
 type Game struct {
 	N              int
 	Round          int

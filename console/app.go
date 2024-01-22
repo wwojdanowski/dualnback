@@ -122,16 +122,6 @@ const (
 	PostRoundStateGameReady
 )
 
-type GameObserver interface {
-	NewSequence(*game.Game, game.Item)
-	PauseForDecision(*game.Game)
-	EvalRound(*game.Game)
-	RoundFinished(*game.Game)
-	StateProcessed(*game.Game)
-	ToggleBox(*game.Game)
-	ToggleLetter(*game.Game)
-}
-
 type SimpleGameObserver struct {
 	s    tcell.Screen
 	done chan bool
@@ -211,7 +201,7 @@ func (o *SimpleGameObserver) StateProcessed(g *game.Game) {
 	}
 }
 
-func flowLoop(ticker *time.Ticker, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, g *game.Game, observer GameObserver) {
+func flowLoop(ticker *time.Ticker, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, g *game.Game, observer game.GameObserver) {
 	state := NewSequenceState
 	for {
 		select {
