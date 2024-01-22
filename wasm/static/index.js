@@ -35,7 +35,7 @@ export const wasmBrowserInstantiate = async (wasmModuleUrl, importObject) => {
   
     // Allow the wasm_exec go instance, bootstrap and execute our wasm module
     go.run(wasmModule.instance);
-    drawGrid();
+    drawTestGrid();
     
   };
   runWasmAdd();
