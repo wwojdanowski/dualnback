@@ -83,7 +83,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-            ref: master
+            ref: ${{github.head_ref}}
+            fetch-depth: 0
       - name: Lint source code
         uses: super-linter/super-linter@v5.7.2  # x-release-please-version
         env:
