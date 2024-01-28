@@ -80,7 +80,12 @@ jobs:
           # validation of the PR title and the pull request checks remain pending.
           # Note that a second check will be reported if this is enabled.
           wip: false
-      - name: Super-linter
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            ref: ${{github.head_ref}}
+            fetch-depth: 0
+      - name: Lint source code
         uses: super-linter/super-linter@v5.7.2  # x-release-please-version
         env:
           DEFAULT_BRANCH: master
