@@ -14,6 +14,7 @@ type JSGameObserver struct {
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 
+
 ctx.font = "30px Arial";
 ctx.fillText("Hello World", 10, 50);
 
