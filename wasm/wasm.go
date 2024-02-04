@@ -20,7 +20,7 @@ ctx.fillText("Hello World", 10, 50);
 
 */
 
-func drawGridWithItem(this js.Value, p []js.Value, newItem game.Item) interface{} {
+func drawGridWithItem(newItem game.Item) interface{} {
 	document := js.Global().Get("document")
 	canvas := document.Call("createElement", "canvas")
 	canvas.Set("width", 300)
@@ -34,6 +34,8 @@ func drawGridWithItem(this js.Value, p []js.Value, newItem game.Item) interface{
 
 	cellSize := 100
 	cellMargin := 10
+	letters := []string{"A", "B", "C", "D", "E"}
+
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
 			x := j * cellSize
@@ -42,8 +44,9 @@ func drawGridWithItem(this js.Value, p []js.Value, newItem game.Item) interface{
 				context.Set("fillStyle", "green")
 				context.Call("fillRect", x+cellMargin, y+cellMargin,
 					cellSize-cellMargin, cellSize-cellMargin)
-				context.Set("font", "30px Arial")
-				context.Call("strokeText", "H", x+cellMargin, y+cellMargin)
+				font := fmt.Sprintf("%dpx Arial", int(float64(cellSize)*0.6))
+				context.Set("font", font)
+				context.Call("strokeText", letters[newItem.Letter], x+cellMargin+cellSize/4, y+cellMargin+cellSize/2)
 				context.Set("fillStyle", "black")
 			} else {
 				context.Call("fillRect", x+cellMargin, y+cellMargin,
@@ -51,41 +54,8 @@ func drawGridWithItem(this js.Value, p []js.Value, newItem game.Item) interface{
 			}
 		}
 	}
-	// letters := []rune{'A', 'B', 'C', 'D', 'E'}
 
 	return js.Undefined()
-}
-
-func (o *JSGameObserver) NewSequence(g *game.Game, item game.Item) {
-	// drawGridWithItem(o.s, 1, 1, 3, 3, boxStyle, itemStyle, newItem)
-	// if g.IsReady() {
-	// 	drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-	// 	drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
-	// }
-}
-
-func (o *JSGameObserver) PauseForDecision(g *game.Game) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (o *JSGameObserver) EvalRound(g *game.Game) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (o *JSGameObserver) RoundFinished(g *game.Game) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (o *JSGameObserver) StateProcessed(g *game.Game) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (o *JSGameObserver) ToggleBox(g *game.Game) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (o *JSGameObserver) ToggleLetter(g *game.Game) {
-	panic("not implemented") // TODO: Implement
 }
 
 func drawGrid(this js.Value, p []js.Value) interface{} {
@@ -111,9 +81,45 @@ func drawGrid(this js.Value, p []js.Value) interface{} {
 	return js.Undefined()
 }
 
+func (o *JSGameObserver) NewSequence(g *game.Game, item game.Item) {
+	drawGridWithItem(item)
+	if g.IsReady() {
+		// drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
+		// drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+	}
+}
+
+func (o *JSGameObserver) PauseForDecision(g *game.Game) {
+	drawGrid()
+}
+
+func (o *JSGameObserver) EvalRound(g *game.Game) {
+	panic("not implemented") // TODO: Implement
+}
+
+func (o *JSGameObserver) RoundFinished(g *game.Game) {
+	panic("not implemented") // TODO: Implement
+}
+
+func (o *JSGameObserver) StateProcessed(g *game.Game) {
+	panic("not implemented") // TODO: Implement
+}
+
+func (o *JSGameObserver) ToggleBox(g *game.Game) {
+	panic("not implemented") // TODO: Implement
+}
+
+func (o *JSGameObserver) ToggleLetter(g *game.Game) {
+	panic("not implemented") // TODO: Implement
+}
+
 func drawTestGrid(this js.Value, p []js.Value) interface{} {
 	newItem := game.Item{1, 1}
-	return drawGridWithItem(this, p, newItem)
+	return drawGridWithItem(newItem)
+}
+
+func run(this js.Value, p []js.Value) {
+
 }
 
 func main() {
