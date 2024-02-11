@@ -99,29 +99,27 @@ type Result struct {
 
 func (g *Game) EvalRound() {
 	result := Result{true, true}
-	score := false
+	boxScore := false
+	letterScore := false
 	g.Round += 1
 
 	if g.nLastBox() == g.firstBox() {
-		score = g.boxSelected
+		boxScore = g.boxSelected
 	} else {
-		score = !g.boxSelected
+		boxScore = !g.boxSelected
 	}
 
-	if score {
-		if g.nLastLetter() == g.firstLetter() {
-			score = g.letterSelected
-		} else {
-			score = !g.letterSelected
-		}
+	if g.nLastLetter() == g.firstLetter() {
+		letterScore = g.letterSelected
 	} else {
-		result.Box = false
+		letterScore = !g.letterSelected
 	}
 
-	if score {
+	result.Box = boxScore
+	result.Letter = letterScore
+
+	if boxScore && letterScore {
 		g.Score += 1
-	} else {
-		result.Letter = false
 	}
 
 	g.LastResult = result
