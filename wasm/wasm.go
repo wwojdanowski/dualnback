@@ -12,17 +12,6 @@ type JSGameObserver struct {
 	canvas js.Value
 }
 
-/*
-
-const canvas = document.getElementById("myCanvas");
-const ctx = canvas.getContext("2d");
-
-
-ctx.font = "30px Arial";
-ctx.fillText("Hello World", 10, 50);
-
-*/
-
 func drawGridWithItem(canvas js.Value, newItem game.Item) interface{} {
 	context := canvas.Call("getContext", "2d")
 
