@@ -111,17 +111,6 @@ func printScoreBoard(s tcell.Screen, x1, y1, x2, y2 int, n, score, rounds, maxRo
 func drawInputStatus(s tcell.Screen, x1, y1, x2, y2 int, result game.Result, style tcell.Style) {
 }
 
-const (
-	NewSequenceState = iota
-	PauseForDecisionState
-	EvalRoundState
-
-	NewSequenceStateGameReady
-	PauseForDecisionStateGameReady
-	EvalRoundStateGameReady
-	PostRoundStateGameReady
-)
-
 type SimpleGameObserver struct {
 	s    tcell.Screen
 	done chan bool
@@ -201,64 +190,6 @@ func (o *SimpleGameObserver) StateProcessed(g *game.Game) {
 	}
 }
 
-func flowLoop(ticker *time.Ticker, toggleBox <-chan struct{}, toggleLetter <-chan struct{}, g *game.Game, observer game.GameObserver) {
-	state := NewSequenceState
-	for {
-		select {
-		case <-ticker.C:
-			switch state {
-			case NewSequenceState:
-				newItem := game.MakeRandomItem()
-				g.NextSequence(newItem)
-				observer.NewSequence(g, newItem)
-				if g.IsReady() {
-					state = PauseForDecisionStateGameReady
-				} else {
-					state = PauseForDecisionState
-				}
-				ticker.Reset(2000 * time.Millisecond)
-			case PauseForDecisionState:
-				observer.PauseForDecision(g)
-				state = EvalRoundState
-			case EvalRoundState:
-				observer.EvalRound(g)
-				state = NewSequenceState
-				ticker.Reset(1000 * time.Millisecond)
-			case NewSequenceStateGameReady:
-				newItem := game.MakeRandomItem()
-				g.NextSequence(newItem)
-				observer.NewSequence(g, newItem)
-				state = PauseForDecisionStateGameReady
-				ticker.Reset(2000 * time.Millisecond)
-			case PauseForDecisionStateGameReady:
-				observer.PauseForDecision(g)
-				state = EvalRoundStateGameReady
-			case EvalRoundStateGameReady:
-				g.EvalRound()
-				observer.EvalRound(g)
-				state = PostRoundStateGameReady
-				ticker.Reset(1000 * time.Millisecond)
-			case PostRoundStateGameReady:
-				observer.RoundFinished(g)
-				state = NewSequenceStateGameReady
-			}
-			observer.StateProcessed(g)
-
-		case <-toggleBox:
-			if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
-				g.ToggleBox()
-				observer.ToggleBox(g)
-
-			}
-		case <-toggleLetter:
-			if state == PauseForDecisionStateGameReady || state == EvalRoundStateGameReady {
-				g.ToggleLetter()
-				observer.ToggleLetter(g)
-			}
-		}
-	}
-}
-
 func controlLoop(s tcell.Screen, done chan bool, ticker *time.Ticker, toggleBox chan struct{}, toggleLetter chan struct{}) {
 	for {
 		s.Show()
@@ -330,7 +261,7 @@ func main() {
 
 	observer := SimpleGameObserver{s, done}
 
-	go flowLoop(ticker, toggleBox, toggleLetter, g, &observer)
+	go game.FlowLoop(ticker, toggleBox, toggleLetter, g, &observer)
 
 	quit := func() {
 		maybePanic := recover()

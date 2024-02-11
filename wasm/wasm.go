@@ -4,9 +4,12 @@ import (
 	"dualnback/game"
 	"fmt"
 	"syscall/js"
+	"time"
 )
 
 type JSGameObserver struct {
+	done   chan bool
+	canvas js.Value
 }
 
 /*
@@ -20,13 +23,7 @@ ctx.fillText("Hello World", 10, 50);
 
 */
 
-func drawGridWithItem(newItem game.Item) interface{} {
-	document := js.Global().Get("document")
-	canvas := document.Call("createElement", "canvas")
-	canvas.Set("width", 300)
-	canvas.Set("height", 300)
-	document.Get("body").Call("appendChild", canvas)
-
+func drawGridWithItem(canvas js.Value, newItem game.Item) interface{} {
 	context := canvas.Call("getContext", "2d")
 
 	boxRow := newItem.Box / 3
@@ -46,6 +43,7 @@ func drawGridWithItem(newItem game.Item) interface{} {
 					cellSize-cellMargin, cellSize-cellMargin)
 				font := fmt.Sprintf("%dpx Arial", int(float64(cellSize)*0.6))
 				context.Set("font", font)
+				context.Set("strokeStyle", "black")
 				context.Call("strokeText", letters[newItem.Letter], x+cellMargin+cellSize/4, y+cellMargin+cellSize/2)
 				context.Set("fillStyle", "black")
 			} else {
@@ -58,13 +56,7 @@ func drawGridWithItem(newItem game.Item) interface{} {
 	return js.Undefined()
 }
 
-func drawGrid(this js.Value, p []js.Value) interface{} {
-	document := js.Global().Get("document")
-	canvas := document.Call("createElement", "canvas")
-	canvas.Set("width", 300)
-	canvas.Set("height", 300)
-	document.Get("body").Call("appendChild", canvas)
-
+func drawGrid(canvas js.Value) interface{} {
 	context := canvas.Call("getContext", "2d")
 
 	cellSize := 100
@@ -82,49 +74,155 @@ func drawGrid(this js.Value, p []js.Value) interface{} {
 }
 
 func (o *JSGameObserver) NewSequence(g *game.Game, item game.Item) {
-	drawGridWithItem(item)
+	drawGridWithItem(o.canvas, item)
 	if g.IsReady() {
+		drawButtons(o.canvas, "ready")
 		// drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
 		// drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
+	} else {
+		drawButtons(o.canvas, "gray")
 	}
 }
 
 func (o *JSGameObserver) PauseForDecision(g *game.Game) {
-	drawGrid()
+	drawGrid(o.canvas)
+	// drawButtons(o.canvas)
 }
 
+func drawPlaceButton(canvas js.Value, state string) {
+	context := canvas.Call("getContext", "2d")
+
+	var style string
+	switch state {
+	case "ready":
+		style = "blue"
+	case "correct":
+		style = "green"
+	case "wrong":
+		style = "red"
+	case "toggle":
+		style = "yellow"
+	default:
+		style = "gray"
+	}
+
+	context.Set("fillStyle", style)
+	context.Call("fillRect", 10, 400, 150, 50)
+
+	context.Set("font", "30px serif")
+	context.Call("strokeText", "PLACE", 20, 430)
+	context.Set("fillStyle", "black")
+}
+
+func drawTextButton(canvas js.Value, state string) {
+	context := canvas.Call("getContext", "2d")
+
+	var style string
+	switch state {
+	case "ready":
+		style = "blue"
+	case "correct":
+		style = "green"
+	case "wrong":
+		style = "red"
+	case "toggle":
+		style = "yellow"
+	default:
+		style = "gray"
+	}
+
+	context.Set("fillStyle", style)
+	context.Call("fillRect", 170, 400, 150, 50)
+
+	context.Set("font", "30px serif")
+	context.Call("strokeText", "LETTER", 180, 430)
+	context.Set("fillStyle", "black")
+}
 func (o *JSGameObserver) EvalRound(g *game.Game) {
-	panic("not implemented") // TODO: Implement
+
+	if g.IsReady() {
+		if g.LastResult.Box {
+			drawPlaceButton(o.canvas, "correct")
+		} else {
+			drawPlaceButton(o.canvas, "wrong")
+		}
+
+		if g.LastResult.Letter {
+			drawTextButton(o.canvas, "correct")
+		} else {
+			drawTextButton(o.canvas, "wrong")
+		}
+	}
+
+	// printScoreBoard(o.s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
 }
 
 func (o *JSGameObserver) RoundFinished(g *game.Game) {
-	panic("not implemented") // TODO: Implement
+	drawButtons(o.canvas, "ready")
 }
 
 func (o *JSGameObserver) StateProcessed(g *game.Game) {
-	panic("not implemented") // TODO: Implement
 }
 
 func (o *JSGameObserver) ToggleBox(g *game.Game) {
-	panic("not implemented") // TODO: Implement
+	if g.IsBoxToggled() {
+		drawPlaceButton(o.canvas, "toggle")
+	} else {
+		drawPlaceButton(o.canvas, "ready")
+	}
 }
 
 func (o *JSGameObserver) ToggleLetter(g *game.Game) {
-	panic("not implemented") // TODO: Implement
+	if g.IsLetterToggled() {
+		drawTextButton(o.canvas, "toggle")
+	} else {
+		drawTextButton(o.canvas, "ready")
+	}
 }
 
-func drawTestGrid(this js.Value, p []js.Value) interface{} {
+func drawTestGrid(canvas js.Value) interface{} {
 	newItem := game.Item{1, 1}
-	return drawGridWithItem(newItem)
+	return drawGridWithItem(canvas, newItem)
 }
 
-func run(this js.Value, p []js.Value) {
+func run(this js.Value, p []js.Value) interface{} {
+	g := game.NewGame(2, 20)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	toggleBox := make(chan struct{})
+	toggleLetter := make(chan struct{})
+	done := make(chan bool)
 
+	document := js.Global().Get("document")
+	canvas := document.Call("createElement", "canvas")
+	canvas.Set("width", 600)
+	canvas.Set("height", 600)
+	document.Get("body").Call("appendChild", canvas)
+
+	observer := JSGameObserver{done, canvas}
+
+	onKeyDown := func(this js.Value, p []js.Value) interface{} {
+		keyCode := p[0].Get("keyCode").Int()
+		if keyCode == 65 {
+			toggleBox <- struct{}{}
+		}
+		if keyCode == 76 {
+			toggleLetter <- struct{}{}
+		}
+		return js.Undefined()
+	}
+	js.Global().Call("addEventListener", "keydown", js.FuncOf(onKeyDown))
+
+	go game.FlowLoop(ticker, toggleBox, toggleLetter, g, &observer)
+	return js.Undefined()
+}
+
+func drawButtons(canvas js.Value, state string) {
+	drawPlaceButton(canvas, state)
+	drawTextButton(canvas, state)
 }
 
 func main() {
 	fmt.Println("Go Web Assembly")
-	js.Global().Set("drawGrid", js.FuncOf(drawGrid))
-	js.Global().Set("drawTestGrid", js.FuncOf(drawTestGrid))
+	js.Global().Set("run", js.FuncOf(run))
 	select {}
 }

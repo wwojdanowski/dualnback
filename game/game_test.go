@@ -77,6 +77,35 @@ func TestSelect(t *testing.T) {
 	assert.Len(t, g.letterQueue, 4)
 }
 
+func TestBoxLetterState(t *testing.T) {
+	g := NewGame(2, 10)
+
+	items := []Item{
+		Item{0, 0},
+		Item{1, 1},
+		Item{2, 2},
+		Item{3, 3},
+		Item{4, 4},
+		Item{5, 5},
+		Item{6, 3},
+		Item{4, 0},
+		Item{8, 1},
+		Item{8, 1},
+	}
+
+	g.NextSequence(items[0])
+	g.NextSequence(items[1])
+	g.NextSequence(items[2])
+	g.EvalRound()
+	assert.Equal(t, true, g.LastResult.Box)
+	assert.Equal(t, true, g.LastResult.Letter)
+	g.NextSequence(items[3])
+	g.ToggleBox()
+	g.EvalRound()
+	assert.Equal(t, false, g.LastResult.Box)
+	assert.Equal(t, true, g.LastResult.Letter)
+}
+
 func TestToggleCorrect(t *testing.T) {
 	g := NewGame(3, 10)
 
