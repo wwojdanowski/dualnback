@@ -30,7 +30,7 @@ func drawGridWithItem(canvas js.Value, newItem game.Item) interface{} {
 	boxCol := newItem.Box % 3
 
 	cellSize := 100
-	cellMargin := 10
+	cellMargin := 20
 	letters := []string{"A", "B", "C", "D", "E"}
 
 	for i := 0; i < 3; i++ {
@@ -60,7 +60,7 @@ func drawGrid(canvas js.Value) interface{} {
 	context := canvas.Call("getContext", "2d")
 
 	cellSize := 100
-	cellMargin := 10
+	cellMargin := 20
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
 			x := j * cellSize
@@ -77,8 +77,6 @@ func (o *JSGameObserver) NewSequence(g *game.Game, item game.Item) {
 	drawGridWithItem(o.canvas, item)
 	if g.IsReady() {
 		drawButtons(o.canvas, "ready")
-		// drawText(o.s, 10, 10, 50, 15, readyToBePressedStyle, "PLACE")
-		// drawText(o.s, 18, 10, 50, 15, readyToBePressedStyle, "LETTER")
 	} else {
 		drawButtons(o.canvas, "gray")
 	}
@@ -86,7 +84,6 @@ func (o *JSGameObserver) NewSequence(g *game.Game, item game.Item) {
 
 func (o *JSGameObserver) PauseForDecision(g *game.Game) {
 	drawGrid(o.canvas)
-	// drawButtons(o.canvas)
 }
 
 func drawPlaceButton(canvas js.Value, state string) {
@@ -138,6 +135,17 @@ func drawTextButton(canvas js.Value, state string) {
 	context.Call("strokeText", "LETTER", 180, 430)
 	context.Set("fillStyle", "black")
 }
+
+func printScoreBoard(canvas js.Value, g *game.Game) {
+	context := canvas.Call("getContext", "2d")
+	context.Set("font", "30px serif")
+	scoreBar := fmt.Sprintf("N: %d | score: %d | rounds: %d/%d", g.N, g.Score, g.Round, g.MaxRounds)
+	context.Set("fillStyle", "white")
+	context.Call("fillRect", 0, 470, 500, 50)
+	context.Set("fillStyle", "black")
+	context.Call("strokeText", scoreBar, 20, 500)
+}
+
 func (o *JSGameObserver) EvalRound(g *game.Game) {
 
 	if g.IsReady() {
@@ -154,7 +162,7 @@ func (o *JSGameObserver) EvalRound(g *game.Game) {
 		}
 	}
 
-	// printScoreBoard(o.s, 10, 1, 50, 15, g.N, g.Score, g.Round, g.MaxRounds, defStyle)
+	printScoreBoard(o.canvas, g)
 }
 
 func (o *JSGameObserver) RoundFinished(g *game.Game) {
@@ -213,6 +221,7 @@ func run(this js.Value, p []js.Value) interface{} {
 	js.Global().Call("addEventListener", "keydown", js.FuncOf(onKeyDown))
 
 	go game.FlowLoop(ticker, toggleBox, toggleLetter, g, &observer)
+	printScoreBoard(canvas, g)
 	return js.Undefined()
 }
 
